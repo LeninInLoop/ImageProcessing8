@@ -27,6 +27,17 @@ class ImageUtils:
         Image.fromarray(image_array).save(filepath)
 
     @staticmethod
+    def normalize_image(image_array: np.ndarray) -> np.ndarray:
+        """Normalize image to range [0, 255]."""
+        min_val = np.min(image_array)
+        max_val = np.max(image_array)
+        if max_val > min_val:
+            normalized = (image_array - min_val) / (max_val - min_val) * 255
+            return normalized
+        else:
+            return np.zeros_like(image_array)
+
+    @staticmethod
     def center_domain(image_array: np.ndarray) -> np.ndarray:
         y_grid, x_grid = np.mgrid[0:image_array.shape[0], 0:image_array.shape[1]]
         mask = np.where( (x_grid + y_grid) % 2 == 0, 1, -1)
@@ -82,7 +93,7 @@ def main():
     base_dir = os.path.join("Images")
     os.makedirs(base_dir, exist_ok=True)
 
-    radius = 10
+    radius = 60
     # ======================================================
     # Creating Ideal Low Pass Filter (LPF in Transform Domain)
     # ======================================================
@@ -91,7 +102,7 @@ def main():
           f"Creating Ideal Low Pass Filter (LPF in Transform Domain)......"
           f"{BColors.ENDC}{BColors.ENDC}")
     lpf_transform_domain = ImageFilter.create_ideal_low_pass_filter(
-        size=[1024, 1024],
+        size=(1024, 1024),
         radius=radius,
     )
     print(f"\nIdeal Low Pass Filter Array (Transform Domain) (radius={radius})\n", lpf_transform_domain)
@@ -130,14 +141,16 @@ def main():
         f"Calculating IDFT of The Ideal Low Pass Filter....."
         f"{BColors.ENDC}{BColors.ENDC}")
 
-    lpf_idft = np.real(np.fft.ifft2(center_lpf_transform_domain))
+    lpf_idft = np.real(
+        np.fft.ifft2(center_lpf_transform_domain)
+    )
 
     center_lpf_idft = ImageUtils.center_domain(
         image_array=lpf_idft
     )
 
     ImageUtils.save_image(
-        image_array=center_lpf_idft,
+        image_array=ImageUtils.normalize_image(center_lpf_idft),
         filepath=os.path.join(base_dir, f"lpf(r={radius})_idft.png")
     )
 
